@@ -2,29 +2,184 @@
 <html>
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta http-equiv="Content-Security-Policy" content="default-src * 'unsafe-inline' 'unsafe-eval'; script-src * 'unsafe-inline' 'unsafe-eval'; connect-src * 'unsafe-inline'; img-src * data: blob: 'unsafe-inline'; frame-src *; style-src * 'unsafe-inline';">
     <title>Budget App - Telegram Login</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            padding: 20px;
+        }
+        
+        .container {
+            text-align: center;
+            background: white;
+            padding: 40px 30px;
+            border-radius: 16px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+            max-width: 400px;
+            width: 100%;
+        }
+        
+        h1 {
+            color: #333;
+            margin-bottom: 10px;
+            font-size: 24px;
+            font-weight: 600;
+        }
+        
+        .subtitle {
+            color: #666;
+            margin-bottom: 30px;
+            font-size: 16px;
+        }
+        
+        #telegram-login-container {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 50px;
+            margin: 20px 0;
+        }
+        
+        #status {
+            margin-top: 20px;
+            color: #999;
+            font-size: 14px;
+            line-height: 1.4;
+        }
+        
+        .error {
+            color: #e74c3c !important;
+        }
+        
+        .success {
+            color: #27ae60 !important;
+        }
+        
+        .loading {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #667eea;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            vertical-align: middle;
+            margin-right: 8px;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
 </head>
 <body>
-    <div id="telegram-login-budget_tracking_tg_bot"></div>
-    <script async src="https://telegram.org/js/telegram-widget.js?22"
-        data-telegram-login="budget_tracking_tg_bot"
-        data-size="large"
-        data-onauth="onTelegramAuth(user)"
-        data-request-access="write">
-    </script>
+    <div class="container">
+        <h1>🏦 Welcome to Budget App</h1>
+        <p class="subtitle">Please log in with your Telegram account</p>
+        
+        <div id="telegram-login-container">
+            <script async src="https://telegram.org/js/telegram-widget.js?22"
+                data-telegram-login="budget_tracking_tg_bot"
+                data-size="large"
+                data-onauth="onTelegramAuth(user)"
+                data-request-access="write">
+            </script>
+        </div>
+        
+        <p id="status"><span class="loading"></span>Loading widget...</p>
+    </div>
+    
     <script>
+        console.log('=== Budget App Telegram Login Page ===');
+        console.log('Page loaded at:', new Date().toISOString());
+        console.log('User agent:', navigator.userAgent);
+        console.log('Online status:', navigator.onLine);
+        
+        // Проверяем загрузку виджета через несколько интервалов
+        let checkCount = 0;
+        const maxChecks = 10;
+        
+        const checkInterval = setInterval(function() {
+            checkCount++;
+            const container = document.getElementById('telegram-login-container');
+            const status = document.getElementById('status');
+            const iframe = container.querySelector('iframe[src*="telegram"]');
+            
+            console.log('Check #' + checkCount + ': iframe ' + (iframe ? 'found' : 'not found'));
+            
+            if (iframe) {
+                console.log('✓ Telegram widget loaded successfully');
+                console.log('iframe src:', iframe.src);
+                status.innerHTML = '<span class="success">✓ Widget loaded</span>';
+                clearInterval(checkInterval);
+            } else if (checkCount >= maxChecks) {
+                console.error('✗ Telegram widget failed to load after ' + maxChecks + ' checks');
+                status.innerHTML = '<span class="error">⚠ Failed to load widget.<br>Please check your internet connection.</span>';
+                clearInterval(checkInterval);
+            }
+        }, 1000);
+        
         function onTelegramAuth(user) {
-            const params = new URLSearchParams({
-                id: user.id,
-                first_name: user.first_name,
-                last_name: user.last_name || '',
-                username: user.username || '',
-                photo_url: user.photo_url || '',
-                auth_date: user.auth_date,
-                hash: user.hash
-            });
-            window.location.href = 'budgetapp://telegram_auth?' + params.toString();
+            console.log('=== Telegram Auth Callback ===');
+            console.log('Received user data:', user);
+            
+            const status = document.getElementById('status');
+            status.innerHTML = '<span class="success">✓ Authentication successful!</span>';
+            
+            try {
+                // Формируем URL с параметрами
+                const params = new URLSearchParams({
+                    id: user.id,
+                    first_name: user.first_name,
+                    last_name: user.last_name || '',
+                    username: user.username || '',
+                    photo_url: user.photo_url || '',
+                    auth_date: user.auth_date,
+                    hash: user.hash
+                });
+                
+                // Перенаправляем на custom URL scheme
+                const redirectUrl = 'budgetapp://telegram_auth?' + params.toString();
+                console.log('Redirecting to:', redirectUrl);
+                
+                setTimeout(function() {
+                    window.location.href = redirectUrl;
+                }, 500);
+            } catch (error) {
+                console.error('Error processing auth:', error);
+                status.innerHTML = '<span class="error">⚠ Error processing authentication</span>';
+            }
         }
+        
+        // Обработка ошибок загрузки скриптов
+        window.addEventListener('error', function(e) {
+            console.error('Script error:', e.message, e.filename, e.lineno);
+        });
+        
+        // Проверяем соединение
+        window.addEventListener('online', function() {
+            console.log('Connection restored');
+        });
+        
+        window.addEventListener('offline', function() {
+            console.log('Connection lost');
+            const status = document.getElementById('status');
+            status.innerHTML = '<span class="error">⚠ No internet connection</span>';
+        });
     </script>
 </body>
 </html>
